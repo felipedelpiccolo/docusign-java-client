@@ -6,6 +6,7 @@
  */
 
 import com.docusign.esign.api.*;
+import com.docusign.esign.api.EnvelopesApi.ListDocumentTabsOptions;
 import com.docusign.esign.client.*;
 //import com.docusign.esign.client.auth.AccessTokenListener;
 import com.docusign.esign.model.*;
@@ -23,7 +24,7 @@ import org.junit.BeforeClass;
 import org.junit.Test;
 import java.util.List;
 import java.util.ArrayList;
-
+import java.util.Arrays;
 import java.io.IOException;
 import java.net.URI;
 import java.nio.file.Files;
@@ -634,6 +635,7 @@ public class SdkUnitTests {
 	@Test
 	public void DownLoadEnvelopeDocumentsTest() {
 
+
 		byte[] fileBytes = null;
 		try {
 			// String currentDir = new java.io.File(".").getCononicalPath();
@@ -761,6 +763,8 @@ public class SdkUnitTests {
 
 	@Test
 	public void ListDocumentsTest() {
+
+
 		ApiClient apiClient = new ApiClient(BaseUrl);
 		String currentDir = System.getProperty("user.dir");
 		
@@ -1095,6 +1099,134 @@ public class SdkUnitTests {
 
 	}
 
+	@Test
+	public void ListDocumentTabsTest() {
+	  byte[] fileBytes = null;
+    try {
+      // String currentDir = new java.io.File(".").getCononicalPath();
+
+      String currentDir = System.getProperty("user.dir");
+
+      Path path = Paths.get(currentDir + SignTest1File);
+      fileBytes = Files.readAllBytes(path);
+    } catch (IOException ioExcp) {
+      Assert.assertEquals(null, ioExcp);
+    }
+
+    // create an envelope to be signed
+    EnvelopeDefinition envDef = new EnvelopeDefinition();
+    envDef.setEmailSubject("Please Sign my Java SDK Envelope");
+    envDef.setEmailBlurb("Hello, Please sign my Java SDK Envelope.");
+
+    // add a document to the envelope
+    Document doc = new Document();
+    String base64Doc = Base64.encodeToString(fileBytes, false);
+    doc.setDocumentBase64(base64Doc);
+    doc.setName("TestFile.pdf");
+    doc.setDocumentId("1");
+
+    List<Document> docs = new ArrayList<Document>();
+    docs.add(doc);
+    envDef.setDocuments(docs);
+
+    // Add a recipient to sign the document
+    Signer signer = new Signer();
+    signer.setEmail(UserName);
+    String name = "Pat Developer";
+    signer.setName(name);
+    signer.setRecipientId("1");
+
+    // this value represents the client's unique identifier for the signer
+    String clientUserId = "2939";
+    signer.setClientUserId(clientUserId);
+
+    // Create a SignHere tab somewhere on the document for the signer to
+    // sign
+    SignHere signHere = new SignHere();
+    signHere.setDocumentId("1");
+    signHere.setPageNumber("1");
+    signHere.setRecipientId("1");
+    signHere.setXPosition("100");
+    signHere.setYPosition("100");
+    signHere.setScaleValue("0.5");
+    
+    List<SignHere> signHereTabs = new ArrayList<SignHere>();
+    signHereTabs.add(signHere);
+    Tabs tabs = new Tabs();
+    tabs.setSignHereTabs(signHereTabs);
+    signer.setTabs(tabs);
+
+    // Above causes issue
+    envDef.setRecipients(new Recipients());
+    envDef.getRecipients().setSigners(new ArrayList<Signer>());
+    envDef.getRecipients().getSigners().add(signer);
+
+    // send the envelope (otherwise it will be "created" in the Draft folder
+    envDef.setStatus("sent");
+	  
+    ApiClient apiClient = new ApiClient(BaseUrl);
+    String currentDir = System.getProperty("user.dir");
+    
+    try {
+      // IMPORTANT NOTE:
+      // the first time you ask for a JWT access token, you should grant access by making the following call
+      // get DocuSign OAuth authorization url:
+      //String oauthLoginUrl = apiClient.getJWTUri(IntegratorKey, RedirectURI, OAuthBaseUrl);
+      // open DocuSign OAuth authorization url in the browser, login and grant access
+      //Desktop.getDesktop().browse(URI.create(oauthLoginUrl));
+      // END OF NOTE
+      
+      apiClient.configureJWTAuthorizationFlow(currentDir + publicKeyFilename, currentDir + privateKeyFilename, OAuthBaseUrl, IntegratorKey, UserId, 3600);
+      Configuration.setDefaultApiClient(apiClient);
+
+      AuthenticationApi authApi = new AuthenticationApi();
+      LoginInformation loginInfo = authApi.login();
+
+      Assert.assertNotNull(loginInfo);
+      Assert.assertNotNull(loginInfo.getLoginAccounts());
+      Assert.assertTrue(loginInfo.getLoginAccounts().size() > 0);
+      List<LoginAccount> loginAccounts = loginInfo.getLoginAccounts();
+      Assert.assertNotNull(loginAccounts.get(0).getAccountId());
+
+      String accountId = loginInfo.getLoginAccounts().get(0).getAccountId();
+
+      // parse first account's baseUrl
+      String[] accountDomain = loginInfo.getLoginAccounts().get(0).getBaseUrl().split("/v2");
+
+      // below code required for production, no effect in demo (same
+      // domain)
+      apiClient.setBasePath(accountDomain[0]);
+      Configuration.setDefaultApiClient(apiClient);
+
+      EnvelopesApi envelopesApi = new EnvelopesApi();
+
+      EnvelopeSummary envelopeSummary = envelopesApi.createEnvelope(accountId, envDef);
+
+      Assert.assertNotNull(envelopeSummary);
+      Assert.assertNotNull(envelopeSummary.getEnvelopeId());
+
+      System.out.println("EnvelopeSummary: " + envelopeSummary);
+      
+      ListDocumentTabsOptions options = envelopesApi. new ListDocumentTabsOptions();
+      options.setPageNumbers(Arrays.asList("1"));
+      Tabs docTabs = envelopesApi.listDocumentTabs(accountId, envelopeSummary.getEnvelopeId(), "1", options);
+      Assert.assertNotNull(docTabs);
+      Assert.assertEquals(tabs.getSignHereTabs().size(), docTabs.getSignHereTabs().size());
+
+      System.out.println("EnvelopeDocumentTabsResult: " + docTabs);
+      
+      Tabs docPageTabs = envelopesApi.listDocumentPageTabs(accountId, envelopeSummary.getEnvelopeId(), "1", "1");
+      Assert.assertNotNull(docPageTabs);
+      Assert.assertEquals(docTabs, docPageTabs);
+      
+      System.out.println("EnvelopeDocumentPageTabsResult: " + docPageTabs);      
+    } catch (ApiException ex) {
+      System.out.println("Exception: " + ex);
+    } catch (Exception e) {
+      System.out.println("Exception: " + e.getLocalizedMessage());
+    }
+	}
+	
 	private String createAuthHeaderCreds(String userName, String password, String integratorKey) {
 		DocuSignCredentials dsCreds = new DocuSignCredentials(UserName, Password, IntegratorKey);
 

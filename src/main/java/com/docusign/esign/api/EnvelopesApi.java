@@ -5212,6 +5212,157 @@ public class EnvelopesApi {
   }
   
   
+  public class ListDocumentTabsOptions
+  {
+    
+    private java.util.List<String> pageNumbers =  new java.util.ArrayList<String>();
+
+    public java.util.List<String> getPageNumbers() {
+      return pageNumbers;
+    }
+
+    public void setPageNumbers(java.util.List<String> pageNumbers) {
+      this.pageNumbers = pageNumbers;
+    }
+    
+  }
+  
+  /**
+   * Gets the tabs information for a document in an envelope.
+   * Retrieves information about the tabs associated with a document in an envelope.
+   * @param accountId The external account number (int) or account ID Guid.
+   * @param envelopeId The envelopeId Guid of the envelope being accessed.
+   * @param documentId The ID of the document being accessed.
+   * @return Tabs
+   */
+  public Tabs listDocumentTabs(String accountId, String envelopeId, String documentId) throws ApiException {
+    return listDocumentTabs(accountId, envelopeId, documentId, null);
+  }
+  
+  /**
+   * Gets the tabs information for a document in an envelope.
+   * Retrieves information about the tabs associated with a document in an envelope.
+   * @param accountId The external account number (int) or account ID Guid.
+   * @param envelopeId The envelopeId Guid of the envelope being accessed.
+   * @param documentId The ID of the document being accessed.
+   * @param ListDocumentTabsOptions Options for modifying the method behavior.
+   * @return Tabs
+   */
+  public Tabs listDocumentTabs(String accountId, String envelopeId, String documentId, ListDocumentTabsOptions options) throws ApiException {
+	  
+    Object postBody = null;
+    
+    // verify the required parameter 'accountId' is set
+    if (accountId == null) {
+       throw new ApiException(400, "Missing the required parameter 'accountId' when calling listDocumentTabs");
+    }
+    
+    // verify the required parameter 'envelopeId' is set
+    if (envelopeId == null) {
+       throw new ApiException(400, "Missing the required parameter 'envelopeId' when calling listDocumentTabs");
+    }
+    
+    // verify the required parameter 'documentId' is set
+    if (documentId == null) {
+       throw new ApiException(400, "Missing the required parameter 'documentId' when calling listDocumentTabs");
+    }
+    
+    // create path and map variables
+    String path = "/v2/accounts/{accountId}/envelopes/{envelopeId}/documents/{documentId}/tabs".replaceAll("\\{format\\}","json")
+      .replaceAll("\\{" + "accountId" + "\\}", apiClient.escapeString(accountId.toString()))
+      .replaceAll("\\{" + "envelopeId" + "\\}", apiClient.escapeString(envelopeId.toString()))
+      .replaceAll("\\{" + "documentId" + "\\}", apiClient.escapeString(documentId.toString()));
+  
+    // query params
+    java.util.List<Pair> queryParams = new java.util.ArrayList<Pair>();
+    java.util.Map<String, String> headerParams = new java.util.HashMap<String, String>();
+    java.util.Map<String, Object> formParams = new java.util.HashMap<String, Object>();
+  
+    if (options != null) {
+      
+      queryParams.addAll(apiClient.parameterToPairs("", "page_numbers", options.pageNumbers));    
+  
+   }
+    
+    final String[] accepts = {
+      "application/json"
+    };
+    final String accept = apiClient.selectHeaderAccept(accepts);
+  
+    final String[] contentTypes = {
+     
+    };
+    final String contentType = apiClient.selectHeaderContentType(contentTypes);
+  
+    String[] authNames = new String[] { "docusignAccessCode" };
+  
+   
+    GenericType<Tabs> returnType = new GenericType<Tabs>() {};
+    return apiClient.invokeAPI(path, "GET", queryParams, postBody, headerParams, formParams, accept, contentType, authNames, returnType);	  
+  }
+  
+  /**
+   * Gets the tabs information for a document's page in an envelope.
+   * Retrieves information about the tabs associated with a document's page in an envelope.
+   * @param accountId The external account number (int) or account ID Guid.
+   * @param envelopeId The envelopeId Guid of the envelope being accessed.
+   * @param documentId The ID of the document being accessed.
+   * @param pageNumber The page number being accessed.
+   * @return Tabs
+   */
+  public Tabs listDocumentPageTabs(String accountId, String envelopeId, String documentId, String pageNumber) throws ApiException {
+    Object postBody = null;
+    
+    // verify the required parameter 'accountId' is set
+    if (accountId == null) {
+       throw new ApiException(400, "Missing the required parameter 'accountId' when calling listDocumentTabs");
+    }
+    
+    // verify the required parameter 'envelopeId' is set
+    if (envelopeId == null) {
+       throw new ApiException(400, "Missing the required parameter 'envelopeId' when calling listDocumentTabs");
+    }
+    
+    // verify the required parameter 'documentId' is set
+    if (documentId == null) {
+       throw new ApiException(400, "Missing the required parameter 'documentId' when calling listDocumentTabs");
+    }
+    
+    // verify the required parameter 'pageNumber' is set
+    if (pageNumber == null) {
+       throw new ApiException(400, "Missing the required parameter 'pageNumber' when calling listDocumentTabs");
+    }
+    
+    // create path and map variables
+    String path = "/v2/accounts/{accountId}/envelopes/{envelopeId}/documents/{documentId}/pages/{pageNumber}/tabs".replaceAll("\\{format\\}","json")
+      .replaceAll("\\{" + "accountId" + "\\}", apiClient.escapeString(accountId.toString()))
+      .replaceAll("\\{" + "envelopeId" + "\\}", apiClient.escapeString(envelopeId.toString()))
+      .replaceAll("\\{" + "documentId" + "\\}", apiClient.escapeString(documentId.toString()))
+      .replaceAll("\\{" + "pageNumber" + "\\}", apiClient.escapeString(pageNumber.toString()));
+  
+    // query params
+    java.util.List<Pair> queryParams = new java.util.ArrayList<Pair>();
+    java.util.Map<String, String> headerParams = new java.util.HashMap<String, String>();
+    java.util.Map<String, Object> formParams = new java.util.HashMap<String, Object>();
+    
+    
+    final String[] accepts = {
+      "application/json"
+    };
+    final String accept = apiClient.selectHeaderAccept(accepts);
+  
+    final String[] contentTypes = {
+     
+    };
+    final String contentType = apiClient.selectHeaderContentType(contentTypes);
+  
+    String[] authNames = new String[] { "docusignAccessCode" };
+  
+   
+    GenericType<Tabs> returnType = new GenericType<Tabs>() {};
+    return apiClient.invokeAPI(path, "GET", queryParams, postBody, headerParams, formParams, accept, contentType, authNames, returnType);
+  }
+  
   /// <summary>
   /// Get List of Templates used in an Envelope This returns a list of the server-side templates, their name and ID, used in an envelope.
   /// </summary>
