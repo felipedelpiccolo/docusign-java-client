@@ -635,9 +635,9 @@ public class ApiClient {
       for (Entry<String, Object> param: formParams.entrySet()) {
         if (param.getValue() instanceof File) {
           File file = (File) param.getValue();
-          mp.bodyPart(new FileDataBodyPart(param.getKey(), file, MediaType.MULTIPART_FORM_DATA_TYPE));
+          mp.bodyPart(new FileDataBodyPart(param.getKey(), file));
         } else {
-          mp.field(param.getKey(), parameterToString(param.getValue()), MediaType.MULTIPART_FORM_DATA_TYPE);
+          mp.field(param.getKey(), param.getValue(), MediaType.APPLICATION_JSON_TYPE);
         }
       }
       return mp;

@@ -6,12 +6,14 @@
  */
 
 import com.docusign.esign.api.*;
+import com.docusign.esign.api.EnvelopesApi.DocumentFile;
 import com.docusign.esign.client.*;
 //import com.docusign.esign.client.auth.AccessTokenListener;
 import com.docusign.esign.model.*;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.io.File;
+import java.io.FileOutputStream;
 import java.awt.Desktop;
 import junit.framework.Assert;
 
@@ -31,6 +33,7 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 
 import com.migcomponents.migbase64.Base64;
+import com.sun.jersey.api.client.GenericType;
 
 /**
  *
@@ -1093,6 +1096,155 @@ public class SdkUnitTests {
 			System.out.println("Exception: " + e.getLocalizedMessage());
 		}
 
+	}
+	
+	@Test
+	public void createEnvelopeWithMultipart() {
+	  byte[] fileBytes = null;
+	  File file = null;
+	  File file2 = null;
+    try {
+      String currentDir = System.getProperty("user.dir");
+
+      Path path = Paths.get(currentDir + SignTest1File);
+      fileBytes = Files.readAllBytes(path);
+      file = path.toFile();
+      file2 = path.toFile();
+    } catch (IOException ioExcp) {
+      Assert.assertEquals(null, ioExcp);
+    }
+
+    // create an envelope to be signed
+    EnvelopeDefinition envDef = new EnvelopeDefinition();
+    envDef.setEmailSubject("Please Sign my Java SDK Envelope");
+    envDef.setEmailBlurb("Hello, Please sign my Java SDK Envelope.");
+
+    // add a document to the envelope
+    Document doc = new Document();
+    doc.setName("TestFile.pdf");
+    doc.setDocumentId("1");
+    
+    Document doc2 = new Document();
+    doc2.setName("TestFile2.pdf");
+    doc2.setDocumentId("2");
+
+    List<Document> docs = new ArrayList<Document>();
+    docs.add(doc);
+    docs.add(doc2);
+    envDef.setDocuments(docs);
+
+    // Add a recipient to sign the document
+    Signer signer = new Signer();
+    signer.setEmail(UserName);
+    String name = "Pat Developer";
+    signer.setName(name);
+    signer.setRecipientId("1");
+
+    // this value represents the client's unique identifier for the signer
+    String clientUserId = "2939";
+    signer.setClientUserId(clientUserId);
+
+    // Create a SignHere tab somewhere on the document for the signer to
+    // sign
+    SignHere signHere = new SignHere();
+    signHere.setDocumentId("1");
+    signHere.setPageNumber("1");
+    signHere.setRecipientId("1");
+    signHere.setXPosition("100");
+    signHere.setYPosition("100");
+    signHere.setScaleValue("0.5");
+
+    List<SignHere> signHereTabs = new ArrayList<SignHere>();
+    signHereTabs.add(signHere);
+    Tabs tabs = new Tabs();
+    tabs.setSignHereTabs(signHereTabs);
+    signer.setTabs(tabs);
+
+    // Above causes issue
+    envDef.setRecipients(new Recipients());
+    envDef.getRecipients().setSigners(new ArrayList<Signer>());
+    envDef.getRecipients().getSigners().add(signer);
+
+    // send the envelope (otherwise it will be "created" in the Draft folder
+    envDef.setStatus("sent");
+
+    ApiClient apiClient = new ApiClient(BaseUrl);
+    String currentDir = System.getProperty("user.dir");
+    
+    try {
+      // IMPORTANT NOTE:
+      // the first time you ask for a JWT access token, you should grant access by making the following call
+      // get DocuSign OAuth authorization url:
+      //String oauthLoginUrl = apiClient.getJWTUri(IntegratorKey, RedirectURI, OAuthBaseUrl);
+      // open DocuSign OAuth authorization url in the browser, login and grant access
+      //Desktop.getDesktop().browse(URI.create(oauthLoginUrl));
+      // END OF NOTE
+      
+      apiClient.configureJWTAuthorizationFlow(currentDir + publicKeyFilename, currentDir + privateKeyFilename, OAuthBaseUrl, IntegratorKey, UserId, 3600);
+      Configuration.setDefaultApiClient(apiClient);
+
+      AuthenticationApi authApi = new AuthenticationApi();
+      LoginInformation loginInfo = authApi.login();
+
+      Assert.assertNotSame(null, loginInfo);
+      Assert.assertNotNull(loginInfo.getLoginAccounts());
+      Assert.assertTrue(loginInfo.getLoginAccounts().size() > 0);
+      List<LoginAccount> loginAccounts = loginInfo.getLoginAccounts();
+      Assert.assertNotNull(loginAccounts.get(0).getAccountId());
+
+      String accountId = loginInfo.getLoginAccounts().get(0).getAccountId();
+
+      // parse first account's baseUrl
+      String[] accountDomain = loginInfo.getLoginAccounts().get(0).getBaseUrl().split("/v2");
+
+      // below code required for production, no effect in demo (same
+      // domain)
+      apiClient.setBasePath(accountDomain[0]);
+      Configuration.setDefaultApiClient(apiClient);
+      
+      EnvelopesApi envelopesApi = new EnvelopesApi();
+      
+      List<DocumentFile> documents = new ArrayList();
+      DocumentFile document1 = envelopesApi. new DocumentFile();
+      document1.setDocumentId("1");
+      document1.setFile(file);
+      documents.add(document1);
+      DocumentFile document2 = envelopesApi. new DocumentFile();
+      document2.setDocumentId("2");
+      document2.setFile(file2);
+      documents.add(document2);
+       
+      EnvelopeSummary envelopeSummary = envelopesApi.createEnvelopeMultipart(accountId, envDef, documents);
+      
+      Assert.assertNotNull(envelopeSummary);
+      Assert.assertNotNull(envelopeSummary.getEnvelopeId());
+      
+      System.out.println("EnvelopeSummary: " + envelopeSummary);
+            
+      
+      byte[] pdfBytes = envelopesApi.getDocument(accountId, envelopeSummary.getEnvelopeId(), "combined");
+      Assert.assertTrue(pdfBytes.length > 0);
+     
+      /*try {
+      
+      File pdfFile = File.createTempFile("ds_", ".pdf", null);
+      FileOutputStream fos = new FileOutputStream(pdfFile);
+      fos.write(pdfBytes);
+      
+      //show the PDF 
+      Desktop.getDesktop().open(pdfFile);
+      
+      
+      } catch (Exception ex) {
+      Assert.fail("Could not create pdf File");
+      
+      }*/
+
+    } catch (ApiException ex) {
+      System.out.println("Exception: " + ex);
+    } catch (Exception e) {
+      System.out.println("Exception: " + e.getLocalizedMessage());
+    }
 	}
 
 	private String createAuthHeaderCreds(String userName, String password, String integratorKey) {
